@@ -323,14 +323,12 @@ textarea {
   field-sizing: content;
 }
 
-textarea:focus,
-.passcode input:focus {
+textarea:focus {
   border-color: var(--accent);
   outline: 3px solid var(--accent-soft);
 }
 
-textarea::placeholder,
-.passcode input::placeholder {
+textarea::placeholder {
   color: #b3a89e;
 }
 
@@ -388,26 +386,6 @@ textarea::placeholder,
   border: 1px solid #f2d3a4;
   border-radius: 10px;
   font-size: 0.875rem;
-}
-
-.passcode {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.passcode input {
-  flex: 1;
-  min-width: 0;
-  height: 44px;
-  padding: 0 12px;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-}
-
-.passcode .btn {
-  height: 44px;
 }
 
 .fine {

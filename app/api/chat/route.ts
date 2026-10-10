@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { type Mode, PERSONA_IDS, type PersonaId } from "@/lib/personas";
 import { systemPrompt, TALK_START } from "@/lib/prompts";
@@ -10,10 +9,6 @@ const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY = 30;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
-
-function sha256(text: string): Buffer {
-  return createHash("sha256").update(text).digest();
-}
 
 function json(body: unknown, status: number) {
   return Response.json(body, { status });
@@ -43,23 +38,6 @@ function parseMessages(value: unknown, mode: Mode): ChatMessage[] | null {
 export async function POST(request: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return json({ error: "相談機能はまだ設定されていません（ANTHROPIC_API_KEY が未設定です）。" }, 503);
-  }
-
-  // APP_PASSCODE を設定している場合は、合言葉が一致する人だけが相談できる
-  const passcode = process.env.APP_PASSCODE;
-  if (passcode) {
-    // 日本語の合言葉も送れるよう、ヘッダーの値は URL エンコードされている
-    let given = "";
-    try {
-      given = decodeURIComponent(request.headers.get("x-app-passcode") ?? "");
-    } catch {
-      // 不正な値は不一致として扱う
-    }
-    if (!timingSafeEqual(sha256(given), sha256(passcode))) {
-      // まだ何も入力していない最初の1回は、間違いではなく入力の案内を出す
-      const error = given === "" ? "合言葉を入力してから送ってください。" : "合言葉が違います。";
-      return json({ error, needsPasscode: true }, 401);
-    }
   }
 
   let body: { persona?: unknown; mode?: unknown; messages?: unknown };

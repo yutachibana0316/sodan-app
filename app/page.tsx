@@ -8,7 +8,6 @@ type Message = { role: "user" | "assistant"; content: string; error?: boolean };
 // 会話は「モード × 相談相手」ごとに別々に持つ
 type Histories = Record<string, Message[]>;
 
-const PASSCODE_KEY = "sodan-app:passcode";
 const MAX_LENGTH = 2000;
 const NONE: Message[] = [];
 
@@ -30,14 +29,6 @@ function createRecognition(): Recognition | null {
   return Ctor ? new Ctor() : null;
 }
 
-function readPasscode(): string {
-  try {
-    return window.localStorage.getItem(PASSCODE_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
 export default function Page() {
   const [persona, setPersona] = useState<PersonaId>("grandpa");
   const [mode, setMode] = useState<Mode>("consult");
@@ -47,8 +38,6 @@ export default function Page() {
   const [listening, setListening] = useState(false);
   const [canListen, setCanListen] = useState(false);
   const [notice, setNotice] = useState("");
-  const [needsPasscode, setNeedsPasscode] = useState(false);
-  const [passcode, setPasscode] = useState("");
   const recognition = useRef<Recognition | null>(null);
   const baseText = useRef("");
   // 「別の話題にする」を押した回数（相談相手ごと）
@@ -81,7 +70,7 @@ export default function Page() {
     setHistories((h) => ({ ...h, [id]: h[id].map((m, i) => (i === h[id].length - 1 ? patch(m) : m)) }));
   }
 
-  async function send(text: string, code = readPasscode()) {
+  async function send(text: string) {
     const content = text.trim();
     if (content === "" || busy) return;
     stopListening();
@@ -97,21 +86,18 @@ export default function Page() {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-app-passcode": encodeURIComponent(code) },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ persona, mode, messages: history }),
       });
 
       if (!response.ok || !response.body) {
         const data = await response.json().catch(() => ({}));
-        if (data.needsPasscode) setNeedsPasscode(true);
         // 送れなかった発言は入力欄に戻して、打ち直さずに済むようにする
         setHistories((h) => ({ ...h, [id]: h[id].slice(0, -2) }));
         setInput(content);
         setNotice(data.error ?? "うまく送れませんでした。もう一度お試しください。");
         return;
       }
-      setNeedsPasscode(false);
-
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       for (;;) {
@@ -164,16 +150,6 @@ export default function Page() {
     setNotice("");
     setListening(true);
     r.start();
-  }
-
-  function submitPasscode(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      window.localStorage.setItem(PASSCODE_KEY, passcode);
-    } catch {
-      // 保存できなくても今回の送信には使う
-    }
-    void send(input, passcode);
   }
 
   function resetChat() {
@@ -272,21 +248,6 @@ export default function Page() {
           <p className="notice" role="alert">
             {notice}
           </p>
-        )}
-        {needsPasscode && (
-          <form className="passcode" onSubmit={submitPasscode}>
-            <input
-              type="password"
-              value={passcode}
-              placeholder="合言葉"
-              aria-label="合言葉"
-              autoComplete="off"
-              onChange={(e) => setPasscode(e.target.value)}
-            />
-            <button type="submit" className="btn" disabled={passcode === "" || input.trim() === ""}>
-              合言葉を使って送る
-            </button>
-          </form>
         )}
         <form
           className="composer"
