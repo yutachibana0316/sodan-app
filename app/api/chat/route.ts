@@ -56,7 +56,9 @@ export async function POST(request: Request) {
       // 不正な値は不一致として扱う
     }
     if (!timingSafeEqual(sha256(given), sha256(passcode))) {
-      return json({ error: "合言葉が違います。", needsPasscode: true }, 401);
+      // まだ何も入力していない最初の1回は、間違いではなく入力の案内を出す
+      const error = given === "" ? "合言葉を入力してから送ってください。" : "合言葉が違います。";
+      return json({ error, needsPasscode: true }, 401);
     }
   }
 
